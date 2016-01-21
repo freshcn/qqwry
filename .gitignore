@@ -25,3 +25,5 @@ _testmain.go
 *.prof
 .idea
 qqwry.iml
+qqwry.dat
+qqwry
