@@ -3,14 +3,22 @@ package main
 import "os"
 
 const (
-	INDEX_NUM = 7 // 索引长度
+	INDEX_NUM      = 7    // 索引长度
+	COUNTRY_MODE_1 = 0x01 // 国家的类型, 指向另一个指向
+	COUNTRY_MODE_2 = 0x02 // 国家的类型, 指向一个指向
 )
+
+type resultQQwry struct {
+	Ip      string `json:"ip"`
+	Country string `json:"country"`
+	Area    string `json:"area"`
+}
 
 // IP 的数据信息
 type qqwry struct {
-	Ip      uint32 `json:"ip"`
-	Country []byte `json:"country"`
-	Area    []byte `json:"area"`
+	Ip      uint32
+	Country []byte
+	Area    []byte
 }
 
 // ip库的索引

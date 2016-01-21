@@ -5,10 +5,12 @@ import (
 	"errors"
 	"io"
 	"os"
+	"net"
 )
 
 var IpData ipData
 
+// 初始化ip库数据到内存中
 func (this *ipData) InitIpData() (rs interface{}) {
 
 	// 判断文件是否存在
@@ -119,6 +121,70 @@ func (this *ipData) InitIpData() (rs interface{}) {
 	this.Data = tmpData
 
 	return
+}
+
+// 查询数据
+func (this *ipData) Find(ip string) interface{} {
+	userIp := binary.BigEndian.Uint32(net.ParseIP(ip).To4())
+
+	start := 0
+	end := len(this.Index)
+
+
+	for {
+		mid := this.FindMiddle(start, end)
+
+		offset := this.Index[mid].Offset
+
+		if _, e := this.Data[offset]; e {
+			if this.Data[offset].Ip == userIp {
+				res := resultQQwry{
+					Ip:ip,
+				}
+
+				res.Country,res.Area = this.ReadCountryAndArea(this.Data[offset])
+				return res
+			} else if this.Data[offset].Ip > userIp {
+				end = mid
+			} else if this.Data[offset].Ip < userIp {
+				start = mid
+			}
+		}
+
+		if end == start {
+			return false
+		}
+
+	}
+}
+
+// 获取国家和地区数据
+func (this *ipData) ReadCountryAndArea(data qqwry) (country, area string) {
+	switch data.Country[0] {
+	case COUNTRY_MODE_1: // 模式1,地址和国家都走了
+		countryOffset := data.Country[1:]
+		tmpData := this.Data[countryOffset]
+		if tmpData.Country[0] == COUNTRY_MODE_2 {
+			country = string(this.Data[tmpData[1:]].Country)
+		} else {
+			country = string(tmpData.Country)
+		}
+		area = string(tmpData.Area)
+	case COUNTRY_MODE_2: // 模式2,国家走了
+		area = string(data.Area)
+		countryOffset := data.Country[1:]
+		country = string(this.Data[countryOffset].Country)
+	default:
+		area = string(data.Area)
+		country = string(data.Country)
+	}
+	return
+}
+
+
+// 查找中间位置
+func (this *ipData) FindMiddle(start, end int) int {
+	return (end - start) >> 1
 }
 
 // 将 byte 转换为uint32
