@@ -1,6 +1,9 @@
 package main
 
-import "os"
+import (
+	"os"
+	"fmt"
+)
 
 const (
 	INDEX_NUM      = 7    // 索引长度
@@ -16,7 +19,7 @@ type resultQQwry struct {
 
 // IP 的数据信息
 type qqwry struct {
-	Ip      uint32
+//	Ip      uint32
 	Country []byte
 	Area    []byte
 }
@@ -32,4 +35,12 @@ type ipData struct {
 	Data     map[uint32]qqwry
 	FilePath string
 	Path     *os.File
+}
+
+func (this qqwry) String() string {
+	return fmt.Sprintf("ip:%d, country:%s, area:%s", this.Ip, this.Country, this.Area)
+}
+
+func (this index) String() string {
+	return fmt.Sprintf("ip:%d, offset:%d", this.Ip, this.Offset)
 }
