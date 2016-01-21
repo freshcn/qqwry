@@ -99,6 +99,16 @@ func (this *ipData) InitIpData() (rs interface{}) {
 		zeroNum = 0
 
 		// 先判断是国家是什么类型
+		mode := this.getMode()
+
+		switch mode {
+		case COUNTRY_MODE_1:// 模式1 国家和区域都走了
+
+		case COUNTRY_MODE_2: // 模板2 国家走了
+		default:
+
+		}
+
 		for i := 0; i < 1024; i++ {
 
 			if zeroNum > 1 {
@@ -145,6 +155,19 @@ func (this *ipData) InitIpData() (rs interface{}) {
 	this.Data = tmpData
 
 	return
+}
+
+// 从文件中判断国家的类型
+func (this *ipData) getMode(offset ...int) byte {
+	buf := make([]byte, 1)
+	if len(offset) > 0 {
+		this.Path.Seek(offset[0], 0)
+	}
+
+	if _, err := this.Path.Read(buf); err == nil {
+		return buf[0]
+	}
+
 }
 
 // 查询数据
