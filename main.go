@@ -29,7 +29,7 @@ func main() {
 	log.Printf("IP 库加载完成 共加载:%d 条 IP 记录, 所花时间:%.1f ms\n", IpData.IpNum, float64(endTime-startTime)/1000000)
 
 	// 下面开始加载 http 相关的服务
-	http.HandleFunc("/ip", findIp)
+	http.HandleFunc("/", findIp)
 
 	log.Printf("开始监听网络端口:%s", *port)
 
