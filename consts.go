@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"net/http"
 )
 
 const (
@@ -26,4 +27,10 @@ type fileData struct {
 type QQwry struct {
 	Data     *fileData
 	Offset   int64
+}
+
+// 向客户端返回数据的
+type response struct {
+	r *http.Request
+	w http.ResponseWriter
 }
