@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 )
 
 var IpData fileData
@@ -62,8 +63,17 @@ func (this *QQwry) ReadData(num int, offset ...int64) (rs []byte) {
 		this.SetOffset(offset[0])
 	}
 	nums := int64(num)
-	rs = this.Data.Data[this.Offset : this.Offset+nums]
-	this.Offset += nums
+	end := this.Offset+nums
+	dataNum := int64(len(this.Data.Data))
+	if (this.Offset > dataNum) {
+		return nil
+	}
+
+	if (end > dataNum) {
+		end = dataNum
+	}
+	rs = this.Data.Data[this.Offset : end]
+	this.Offset = end
 	return
 }
 
@@ -77,6 +87,9 @@ func (this *QQwry) Find(ip string) (res resultQQwry) {
 	res = resultQQwry{}
 
 	res.Ip = ip
+	if strings.Count(ip, ".") != 3 {
+		return res
+	}
 	offset := this.searchIndex(binary.BigEndian.Uint32(net.ParseIP(ip).To4()))
 	if offset <= 0 {
 		return
