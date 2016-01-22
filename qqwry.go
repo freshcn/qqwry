@@ -3,17 +3,17 @@ package main
 import (
 	"encoding/binary"
 	"errors"
-//	"github.com/axgle/mahonia"
-	"io"
+	"github.com/axgle/mahonia"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
 )
 
-var IpData ipData
+var IpData fileData
 
 // 初始化ip库数据到内存中
-func (this *ipData) InitIpData() (rs interface{}) {
+func (this *fileData) InitIpData() (rs interface{}) {
 
 	// 判断文件是否存在
 	_, err := os.Stat(this.FilePath)
@@ -28,231 +28,173 @@ func (this *ipData) InitIpData() (rs interface{}) {
 		rs = err
 		return
 	}
+	defer this.Path.Close()
 
-	this.Path.Seek(0, 0)
-	indexPos := make([]byte, 8)
-	if _, err := this.Path.Read(indexPos); err != nil {
+
+	tmpData, err := ioutil.ReadAll(this.Path)
+	if err != nil {
+		log.Println(err)
 		rs = err
 		return
 	}
 
-	start := binary.LittleEndian.Uint32(indexPos[:4])
-	end := binary.LittleEndian.Uint32(indexPos[4:])
-
-	// 索引数量
-	indexNum := (end-start)/INDEX_NUM + 1
-
-	// 临时索引,当文件加载完成后将索引给到 ipData 提供给查询使用
-	tmpIndex := make([]index, indexNum)
-	// 临时文件数据,当文件加载完成后,将数据给到 ipData 提供给查询使用
-	tmpData := make(map[uint32]qqwry)
-
-	// index 的缓存数据
-	indexBuf := make([]byte, INDEX_NUM)
-	// data 的临时缓冲数据
-	dataTmpBuf := make([]byte, 1)
-	// 从数据区获取 IP 地址
-	ipBuf := make([]byte, 4)
-	// 数据的偏移量
-	dataOffset := uint32(0)
-
-	j := 0
-	zeroNum := 0
-
-	// gbk转utf8
-//	enc := mahonia.NewEncoder("gbk")
-	// 开始加载索引
-	for i := uint32(0); i < indexNum; i++ {
-
-		// 将文件的指针跳转到索引开始的位置
-		this.Path.Seek(int64(start+i*INDEX_NUM), 0)
-		if _, err := this.Path.Read(indexBuf); err != nil {
-			if err == io.EOF {
-				break
-			}
-			continue
-		}
-
-		dataOffset = byteToUInt32(indexBuf[4:])
-
-		tmpIndex[j] = index{
-			Ip:     binary.LittleEndian.Uint32(indexBuf[:4]),
-			Offset: dataOffset,
-		}
-
-		j++
-
-		// 开始获取 IP 的地址数据
-//		this.Path.Seek(int64(dataOffset), 0)
-		this.Path.Seek(int64(dataOffset + 4), 0)
-
-//		if _, err = this.Path.Read(ipBuf); err != nil {
-//			continue
-//		}
-
-		tmpQQwry := qqwry{
-//			Ip:      binary.LittleEndian.Uint32(ipBuf),
-			Country: make([]byte, 0, 50),
-			Area:    make([]byte, 0, 50),
-		}
-
-		zeroNum = 0
-
-		// 先判断是国家是什么类型
-		mode := this.getMode()
-
-		switch mode {
-		case COUNTRY_MODE_1:// 模式1 国家和区域都走了
-
-		case COUNTRY_MODE_2: // 模板2 国家走了
-		default:
-
-		}
-
-		for i := 0; i < 1024; i++ {
-
-			if zeroNum > 1 {
-				zeroNum = 0
-				break
-			}
-
-			if _, err = this.Path.Read(dataTmpBuf); err != nil {
-				continue
-			}
-
-			if dataTmpBuf[0] == 0 {
-				zeroNum++
-				continue
-			}
-
-			if zeroNum == 0 {
-				tmpQQwry.Country = append(tmpQQwry.Country, dataTmpBuf[0])
-			} else if zeroNum == 1 {
-				tmpQQwry.Area = append(tmpQQwry.Area, dataTmpBuf[0])
-			}
-
-//			// 当国家为字符串时，需要对其进行转码为utf-8
-//			if tmpQQwry.Country[0] != COUNTRY_MODE_1 && tmpQQwry.Country[0] != COUNTRY_MODE_2 {
-//				tmpQQwry.Country = []byte(enc.ConvertString(string(tmpQQwry.Country)))
-//			}
-//
-//			// 当区域的数据不为空时
-//			if len(tmpQQwry.Area) > 0 {
-//				tmpQQwry.Area = []byte(enc.ConvertString(string(tmpQQwry.Area)))
-//			}
-
-		}
-
-//		log.Printf("ip:%d, country:%s, area:%s \n", tmpQQwry.Ip, tmpQQwry.Country, tmpQQwry.Area);
-		tmpData[dataOffset] = tmpQQwry
-
-//		if i == 0 {
-//			os.Exit(0)
-//		}
-	}
-
-	this.Index = tmpIndex
 	this.Data = tmpData
 
+	buf := this.Data[0:8]
+	start := binary.LittleEndian.Uint32(buf[:4])
+	end := binary.LittleEndian.Uint32(buf[4:])
+
+	this.IpNum = int64((end-start)/INDEX_LEN + 1)
+
+	return true
+}
+
+// 新建 qqwry  类型
+func NewQQwry() QQwry {
+	return QQwry{
+		Data: &IpData,
+	}
+}
+
+// 从文件中读取数据
+func (this *QQwry) ReadData(num int, offset ...int64) (rs []byte) {
+	if len(offset) > 0 {
+		this.SetOffset(offset[0])
+	}
+	nums := int64(num)
+	rs = this.Data.Data[this.Offset : this.Offset+nums]
+	this.Offset += nums
 	return
 }
 
-// 从文件中判断国家的类型
-func (this *ipData) getMode(offset ...int) byte {
-	buf := make([]byte, 1)
-	if len(offset) > 0 {
-		this.Path.Seek(offset[0], 0)
-	}
-
-	if _, err := this.Path.Read(buf); err == nil {
-		return buf[0]
-	}
-
+// 设置偏移量
+func (this *QQwry) SetOffset(offset int64) {
+	this.Offset = offset
 }
 
-// 查询数据
-func (this *ipData) Find(ip string) interface{} {
-	userIp := binary.BigEndian.Uint32(net.ParseIP(ip).To4())
+func (this *QQwry) Find(ip string) (res resultQQwry) {
 
-	log.Println("用户输入的ip地址转：", userIp)
+	res = resultQQwry{}
 
-	start := 0
-	end := len(this.Index)
+	res.Ip = ip
+	offset := this.searchIndex(binary.BigEndian.Uint32(net.ParseIP(ip).To4()))
+	if offset <= 0 {
+		return
+	}
+
+	var country []byte
+	var area []byte
+
+	mode := this.readMode(offset + 4)
+	if mode == REDIRECT_MODE_1 {
+		countryOffset := this.readUInt24()
+		mode = this.readMode(countryOffset)
+		if mode == REDIRECT_MODE_2 {
+			c := this.readUInt24()
+			country = this.readString(c)
+			countryOffset += 4
+		} else {
+			country = this.readString(countryOffset)
+			countryOffset += uint32(len(country) + 1)
+		}
+		area = this.readArea(countryOffset)
+	} else if mode == REDIRECT_MODE_2 {
+		countryOffset := this.readUInt24()
+		country = this.readString(countryOffset)
+		area = this.readArea(offset + 8)
+	} else {
+		country = this.readString(offset + 4)
+		area = this.readArea(offset + uint32(5+len(country)))
+	}
+
+
+	enc := mahonia.NewDecoder("gbk")
+	res.Country = enc.ConvertString(string(country))
+	res.Area = enc.ConvertString(string(area))
+
+	return
+}
+
+func (this *QQwry) readMode(offset uint32) byte {
+	mode := this.ReadData(1, int64(offset))
+	return mode[0]
+}
+
+func (this *QQwry) readArea(offset uint32) []byte {
+	mode := this.readMode(offset)
+	if mode == REDIRECT_MODE_1 || mode == REDIRECT_MODE_2 {
+		areaOffset := this.readUInt24()
+		if areaOffset == 0 {
+			return []byte("")
+		} else {
+			return this.readString(areaOffset)
+		}
+	} else {
+		return this.readString(offset)
+	}
+	return []byte("")
+}
+
+func (this *QQwry) readString(offset uint32) []byte {
+	this.SetOffset(int64(offset))
+	data := make([]byte, 0, 30)
+	buf := make([]byte, 1)
+	for {
+		buf = this.ReadData(1)
+		if buf[0] == 0 {
+			break
+		}
+		data = append(data, buf[0])
+	}
+	return data
+}
+
+func (this *QQwry) searchIndex(ip uint32) uint32 {
+	header := this.ReadData(8, 0)
+
+	start := binary.LittleEndian.Uint32(header[:4])
+	end := binary.LittleEndian.Uint32(header[4:])
+
+	buf := make([]byte, INDEX_LEN)
+	mid := uint32(0)
+	_ip := uint32(0)
 
 	for {
-		log.Println("start:", start, "end:", end)
-		mid := this.FindMiddle(start, end)
-		log.Println("中间点：", mid)
+		mid = this.getMiddleOffset(start, end)
+		buf = this.ReadData(INDEX_LEN, int64(mid))
+		_ip = binary.LittleEndian.Uint32(buf[:4])
 
-		offset := this.Index[mid].Offset
-		log.Println("中间点的数据", this.Index[mid])
-
-		if _, e := this.Data[offset]; e {
-
-			if end-start == 1 {
-				res := resultQQwry{
-					Ip: ip,
-				}
-				res.Country, res.Area = this.ReadCountryAndArea(this.Data[offset])
-				return res
-			}
-
-			log.Printf("ip记录：%#v\n", this.Data[offset])
-			if this.Data[offset].Ip == userIp {
-				log.Println("ip地址正好对上===============================")
-				res := resultQQwry{
-					Ip: ip,
-				}
-
-				res.Country, res.Area = this.ReadCountryAndArea(this.Data[offset])
-				return res
-			} else if this.Data[offset].Ip > userIp {
-				end = mid
-			} else if this.Data[offset].Ip < userIp {
-				start = mid
+		if end-start == INDEX_LEN {
+			offset := byteToUInt32(buf[4:])
+			buf = this.ReadData(INDEX_LEN)
+			if ip < binary.LittleEndian.Uint32(buf[:4]) {
+				return offset
 			} else {
-				log.Println("2个ip之间完全没有关系", this.Data[offset].Ip, " - ", userIp)
+				return 0
 			}
-		} else {
-			log.Println("没有找到中间点的IP记录")
-			return false
 		}
+
+		// 找到的比较大，向前移
+		if _ip > ip {
+			end = mid
+		} else if _ip < ip { // 找到的比较小，向后移
+			start = mid
+		} else if _ip == ip {
+			return byteToUInt32(buf[4:])
+		}
+
 	}
+	return 0
 }
 
-// 获取国家和地区数据
-func (this *ipData) ReadCountryAndArea(data qqwry) (country, area string) {
-	log.Printf("显示这个数据%s\n", data)
-	switch data.Country[0] {
-	case COUNTRY_MODE_1: // 模式1,地址和国家都走了
-		countryOffset := byteToUInt32(data.Country[1:4])
-
-		tmpData := this.Data[countryOffset]
-		log.Println("国家的偏移量", tmpData)
-		if tmpData.Country[0] == COUNTRY_MODE_2 {
-			country = string(this.Data[byteToUInt32(tmpData.Country[1:4])].Country)
-		} else {
-			country = string(tmpData.Country)
-		}
-		area = string(tmpData.Area)
-	case COUNTRY_MODE_2: // 模式2,国家走了
-		area = string(data.Area)
-		countryOffset := byteToUInt32(data.Country[1:4])
-		country = string(this.Data[countryOffset].Country)
-	default:
-		area = string(data.Area)
-		country = string(data.Country)
-	}
-
-	//	enc := mahonia.NewEncoder("gbk")
-	//	area = enc.ConvertString(area)
-	//	country = enc.ConvertString(country)
-	return
+func (this *QQwry) readUInt24() uint32 {
+	buf := this.ReadData(3)
+	return byteToUInt32(buf)
 }
 
-// 查找中间位置
-func (this *ipData) FindMiddle(start, end int) int {
-	return start + ((end - start) >> 1)
+func (this *QQwry) getMiddleOffset(start uint32, end uint32) uint32 {
+	records := ((end - start) / INDEX_LEN) >> 1
+	return start + records*INDEX_LEN
 }
 
 // 将 byte 转换为uint32

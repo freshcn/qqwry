@@ -23,12 +23,9 @@ func main() {
 	}
 	endTime := time.Now().UnixNano()
 
+	log.Printf("IP 库加载完成 共加载:%d 条 IP 记录, 所花时间:%.1f ms", IpData.IpNum, float64(endTime-startTime)/1000000)
+
 	// 下面开始加载 http 相关的服务
 
-	log.Printf("IP 库加载完成 共加载:%d 条 IP 记录, 所花时间:%.1f秒", len(IpData.Index), float64(endTime-startTime)/1000000000)
-
-
-	log.Println(IpData.Find("117.174.30.54"))
-
-	time.Sleep(1000*time.Second)
+	
 }
