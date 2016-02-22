@@ -14,38 +14,38 @@ import (
 var IpData fileData
 
 // 初始化ip库数据到内存中
-func (this *fileData) InitIpData() (rs interface{}) {
+func (f *fileData) InitIpData() (rs interface{}) {
 
 	// 判断文件是否存在
-	_, err := os.Stat(this.FilePath)
+	_, err := os.Stat(f.FilePath)
 	if err != nil && os.IsNotExist(err) {
 		rs = errors.New("文件不存在")
 		return
 	}
 
 	// 打开文件句柄
-	this.Path, err = os.OpenFile(this.FilePath, os.O_RDONLY, 0400)
+	f.Path, err = os.OpenFile(f.FilePath, os.O_RDONLY, 0400)
 	if err != nil {
 		rs = err
 		return
 	}
-	defer this.Path.Close()
+	defer f.Path.Close()
 
 
-	tmpData, err := ioutil.ReadAll(this.Path)
+	tmpData, err := ioutil.ReadAll(f.Path)
 	if err != nil {
 		log.Println(err)
 		rs = err
 		return
 	}
 
-	this.Data = tmpData
+	f.Data = tmpData
 
-	buf := this.Data[0:8]
+	buf := f.Data[0:8]
 	start := binary.LittleEndian.Uint32(buf[:4])
 	end := binary.LittleEndian.Uint32(buf[4:])
 
-	this.IpNum = int64((end-start)/INDEX_LEN + 1)
+	f.IpNum = int64((end-start)/INDEX_LEN + 1)
 
 	return true
 }
@@ -58,31 +58,31 @@ func NewQQwry() QQwry {
 }
 
 // 从文件中读取数据
-func (this *QQwry) ReadData(num int, offset ...int64) (rs []byte) {
+func (q *QQwry) ReadData(num int, offset ...int64) (rs []byte) {
 	if len(offset) > 0 {
-		this.SetOffset(offset[0])
+		q.SetOffset(offset[0])
 	}
 	nums := int64(num)
-	end := this.Offset+nums
-	dataNum := int64(len(this.Data.Data))
-	if (this.Offset > dataNum) {
+	end := q.Offset+nums
+	dataNum := int64(len(q.Data.Data))
+	if (q.Offset > dataNum) {
 		return nil
 	}
 
 	if (end > dataNum) {
 		end = dataNum
 	}
-	rs = this.Data.Data[this.Offset : end]
-	this.Offset = end
+	rs = q.Data.Data[q.Offset : end]
+	q.Offset = end
 	return
 }
 
 // 设置偏移量
-func (this *QQwry) SetOffset(offset int64) {
-	this.Offset = offset
+func (q *QQwry) SetOffset(offset int64) {
+	q.Offset = offset
 }
 
-func (this *QQwry) Find(ip string) (res resultQQwry) {
+func (q *QQwry) Find(ip string) (res resultQQwry) {
 
 	res = resultQQwry{}
 
@@ -90,7 +90,7 @@ func (this *QQwry) Find(ip string) (res resultQQwry) {
 	if strings.Count(ip, ".") != 3 {
 		return res
 	}
-	offset := this.searchIndex(binary.BigEndian.Uint32(net.ParseIP(ip).To4()))
+	offset := q.searchIndex(binary.BigEndian.Uint32(net.ParseIP(ip).To4()))
 	if offset <= 0 {
 		return
 	}
@@ -98,26 +98,26 @@ func (this *QQwry) Find(ip string) (res resultQQwry) {
 	var country []byte
 	var area []byte
 
-	mode := this.readMode(offset + 4)
+	mode := q.readMode(offset + 4)
 	if mode == REDIRECT_MODE_1 {
-		countryOffset := this.readUInt24()
-		mode = this.readMode(countryOffset)
+		countryOffset := q.readUInt24()
+		mode = q.readMode(countryOffset)
 		if mode == REDIRECT_MODE_2 {
-			c := this.readUInt24()
-			country = this.readString(c)
+			c := q.readUInt24()
+			country = q.readString(c)
 			countryOffset += 4
 		} else {
-			country = this.readString(countryOffset)
+			country = q.readString(countryOffset)
 			countryOffset += uint32(len(country) + 1)
 		}
-		area = this.readArea(countryOffset)
+		area = q.readArea(countryOffset)
 	} else if mode == REDIRECT_MODE_2 {
-		countryOffset := this.readUInt24()
-		country = this.readString(countryOffset)
-		area = this.readArea(offset + 8)
+		countryOffset := q.readUInt24()
+		country = q.readString(countryOffset)
+		area = q.readArea(offset + 8)
 	} else {
-		country = this.readString(offset + 4)
-		area = this.readArea(offset + uint32(5+len(country)))
+		country = q.readString(offset + 4)
+		area = q.readArea(offset + uint32(5+len(country)))
 	}
 
 
@@ -128,32 +128,32 @@ func (this *QQwry) Find(ip string) (res resultQQwry) {
 	return
 }
 
-func (this *QQwry) readMode(offset uint32) byte {
-	mode := this.ReadData(1, int64(offset))
+func (q *QQwry) readMode(offset uint32) byte {
+	mode := q.ReadData(1, int64(offset))
 	return mode[0]
 }
 
-func (this *QQwry) readArea(offset uint32) []byte {
-	mode := this.readMode(offset)
+func (q *QQwry) readArea(offset uint32) []byte {
+	mode := q.readMode(offset)
 	if mode == REDIRECT_MODE_1 || mode == REDIRECT_MODE_2 {
-		areaOffset := this.readUInt24()
+		areaOffset := q.readUInt24()
 		if areaOffset == 0 {
 			return []byte("")
 		} else {
-			return this.readString(areaOffset)
+			return q.readString(areaOffset)
 		}
 	} else {
-		return this.readString(offset)
+		return q.readString(offset)
 	}
 	return []byte("")
 }
 
-func (this *QQwry) readString(offset uint32) []byte {
-	this.SetOffset(int64(offset))
+func (q *QQwry) readString(offset uint32) []byte {
+	q.SetOffset(int64(offset))
 	data := make([]byte, 0, 30)
 	buf := make([]byte, 1)
 	for {
-		buf = this.ReadData(1)
+		buf = q.ReadData(1)
 		if buf[0] == 0 {
 			break
 		}
@@ -162,8 +162,8 @@ func (this *QQwry) readString(offset uint32) []byte {
 	return data
 }
 
-func (this *QQwry) searchIndex(ip uint32) uint32 {
-	header := this.ReadData(8, 0)
+func (q *QQwry) searchIndex(ip uint32) uint32 {
+	header := q.ReadData(8, 0)
 
 	start := binary.LittleEndian.Uint32(header[:4])
 	end := binary.LittleEndian.Uint32(header[4:])
@@ -173,13 +173,13 @@ func (this *QQwry) searchIndex(ip uint32) uint32 {
 	_ip := uint32(0)
 
 	for {
-		mid = this.getMiddleOffset(start, end)
-		buf = this.ReadData(INDEX_LEN, int64(mid))
+		mid = q.getMiddleOffset(start, end)
+		buf = q.ReadData(INDEX_LEN, int64(mid))
 		_ip = binary.LittleEndian.Uint32(buf[:4])
 
 		if end-start == INDEX_LEN {
 			offset := byteToUInt32(buf[4:])
-			buf = this.ReadData(INDEX_LEN)
+			buf = q.ReadData(INDEX_LEN)
 			if ip < binary.LittleEndian.Uint32(buf[:4]) {
 				return offset
 			} else {
@@ -200,12 +200,12 @@ func (this *QQwry) searchIndex(ip uint32) uint32 {
 	return 0
 }
 
-func (this *QQwry) readUInt24() uint32 {
-	buf := this.ReadData(3)
+func (q *QQwry) readUInt24() uint32 {
+	buf := q.ReadData(3)
 	return byteToUInt32(buf)
 }
 
-func (this *QQwry) getMiddleOffset(start uint32, end uint32) uint32 {
+func (q *QQwry) getMiddleOffset(start uint32, end uint32) uint32 {
 	records := ((end - start) / INDEX_LEN) >> 1
 	return start + records*INDEX_LEN
 }

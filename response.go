@@ -15,18 +15,18 @@ func NewResponse(w http.ResponseWriter, r *http.Request) response {
 }
 
 // 返回正确的信息
-func (this *response) ReturnSuccess(data interface{}) {
-	this.Return(data, 200)
+func (r *response) ReturnSuccess(data interface{}) {
+	r.Return(data, 200)
 }
 
 // 返回错误信息
-func (this *response) ReturnError(statuscode, code int, errMsg string) {
-	this.Return(map[string]interface{}{"errcode":code, "errmsg":errMsg}, statuscode)
+func (r *response) ReturnError(statuscode, code int, errMsg string) {
+	r.Return(map[string]interface{}{"errcode":code, "errmsg":errMsg}, statuscode)
 }
 
 // 向客户返回回数据
-func (this *response) Return(data interface{}, code int) {
-	jsonp := this.IsJSONP()
+func (r *response) Return(data interface{}, code int) {
+	jsonp := r.IsJSONP()
 
 	rs, err := ffjson.Marshal(data)
 	if  err != nil {
@@ -34,20 +34,20 @@ func (this *response) Return(data interface{}, code int) {
 		rs = []byte(fmt.Sprintf(`{"errcode":500, "errmsg":"%s"}`, err.Error()))
 	}
 
-	this.w.WriteHeader(code)
+	r.w.WriteHeader(code)
 	if jsonp == "" {
-		this.w.Header().Add("Content-Type", "application/json")
-		this.w.Write(rs)
+		r.w.Header().Add("Content-Type", "application/json")
+		r.w.Write(rs)
 	} else {
-		this.w.Header().Add("Content-Type", "application/javascript")
-		this.w.Write([]byte(fmt.Sprintf(`%s(%s)`, jsonp, rs)))
+		r.w.Header().Add("Content-Type", "application/javascript")
+		r.w.Write([]byte(fmt.Sprintf(`%s(%s)`, jsonp, rs)))
 	}
 }
 
 // 是否为jsonp 请求
-func (this *response) IsJSONP() string {
-	if this.r.Form.Get("callback") != "" {
-		return this.r.Form.Get("callback")
+func (r *response) IsJSONP() string {
+	if r.r.Form.Get("callback") != "" {
+		return r.r.Form.Get("callback")
 	}
 	return ""
 }
