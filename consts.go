@@ -1,36 +1,41 @@
 package main
 
 import (
-	"os"
 	"net/http"
+	"os"
 )
 
 const (
-	INDEX_LEN       = 7    // 索引长度
-	REDIRECT_MODE_1 = 0x01 // 国家的类型, 指向另一个指向
-	REDIRECT_MODE_2 = 0x02 // 国家的类型, 指向一个指向
+	// IndexLen 索引长度
+	IndexLen = 7
+	// RedirectMode1 国家的类型, 指向另一个指向
+	RedirectMode1 = 0x01
+	// RedirectMode2 国家的类型, 指向一个指向
+	RedirectMode2 = 0x02
 )
 
-type resultQQwry struct {
-	Ip      string `json:"ip"`
+// ResultQQwry 归属地信息
+type ResultQQwry struct {
+	IP      string `json:"ip"`
 	Country string `json:"country"`
 	Area    string `json:"area"`
 }
 
 type fileData struct {
-	Data []byte
+	Data     []byte
 	FilePath string
 	Path     *os.File
-	IpNum    int64
+	IPNum    int64
 }
 
+// QQwry 纯真ip库
 type QQwry struct {
-	Data     *fileData
-	Offset   int64
+	Data   *fileData
+	Offset int64
 }
 
-// 向客户端返回数据的
-type response struct {
+// Response 向客户端返回数据的
+type Response struct {
 	r *http.Request
 	w http.ResponseWriter
 }

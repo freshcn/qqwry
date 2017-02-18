@@ -2,12 +2,12 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"runtime"
-	"time"
-	"fmt"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -16,20 +16,20 @@ func main() {
 	port := flag.String("port", "2060", "HTTP 请求监听端口号")
 	flag.Parse()
 
-	IpData.FilePath = *datFile
+	IPData.FilePath = *datFile
 
 	startTime := time.Now().UnixNano()
-	res := IpData.InitIpData()
+	res := IPData.InitIPData()
 
 	if v, ok := res.(error); ok {
 		log.Panic(v)
 	}
 	endTime := time.Now().UnixNano()
 
-	log.Printf("IP 库加载完成 共加载:%d 条 IP 记录, 所花时间:%.1f ms\n", IpData.IpNum, float64(endTime-startTime)/1000000)
+	log.Printf("IP 库加载完成 共加载:%d 条 IP 记录, 所花时间:%.1f ms\n", IPData.IPNum, float64(endTime-startTime)/1000000)
 
 	// 下面开始加载 http 相关的服务
-	http.HandleFunc("/", findIp)
+	http.HandleFunc("/", findIP)
 
 	log.Printf("开始监听网络端口:%s", *port)
 
@@ -38,8 +38,8 @@ func main() {
 	}
 }
 
-// 查找 IP 地址的接口
-func findIp(w http.ResponseWriter, r *http.Request) {
+// findIP 查找 IP 地址的接口
+func findIP(w http.ResponseWriter, r *http.Request) {
 	res := NewResponse(w, r)
 
 	ip := r.Form.Get("ip")
@@ -53,7 +53,7 @@ func findIp(w http.ResponseWriter, r *http.Request) {
 
 	qqWry := NewQQwry()
 
-	rs := map[string]resultQQwry{}
+	rs := map[string]ResultQQwry{}
 	if len(ips) > 0 {
 		for _, v := range ips {
 			rs[v] = qqWry.Find(v)
