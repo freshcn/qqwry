@@ -12,10 +12,11 @@ import (
 	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
-var IpData fileData
+// IPData IP库的数据
+var IPData fileData
 
-// 初始化ip库数据到内存中
-func (f *fileData) InitIpData() (rs interface{}) {
+// InitIPData 初始化ip库数据到内存中
+func (f *fileData) InitIPData() (rs interface{}) {
 
 	// 判断文件是否存在
 	_, err := os.Stat(f.FilePath)
@@ -45,19 +46,19 @@ func (f *fileData) InitIpData() (rs interface{}) {
 	start := binary.LittleEndian.Uint32(buf[:4])
 	end := binary.LittleEndian.Uint32(buf[4:])
 
-	f.IpNum = int64((end-start)/INDEX_LEN + 1)
+	f.IPNum = int64((end-start)/IndexLen + 1)
 
 	return true
 }
 
-// 新建 qqwry  类型
+// NewQQwry 新建 qqwry  类型
 func NewQQwry() QQwry {
 	return QQwry{
-		Data: &IpData,
+		Data: &IPData,
 	}
 }
 
-// 从文件中读取数据
+// ReadData 从文件中读取数据
 func (q *QQwry) ReadData(num int, offset ...int64) (rs []byte) {
 	if len(offset) > 0 {
 		q.SetOffset(offset[0])
@@ -77,16 +78,17 @@ func (q *QQwry) ReadData(num int, offset ...int64) (rs []byte) {
 	return
 }
 
-// 设置偏移量
+// SetOffset 设置偏移量
 func (q *QQwry) SetOffset(offset int64) {
 	q.Offset = offset
 }
 
-func (q *QQwry) Find(ip string) (res resultQQwry) {
+// Find ip地址查询对应归属地信息
+func (q *QQwry) Find(ip string) (res ResultQQwry) {
 
-	res = resultQQwry{}
+	res = ResultQQwry{}
 
-	res.Ip = ip
+	res.IP = ip
 	if strings.Count(ip, ".") != 3 {
 		return res
 	}
@@ -99,10 +101,10 @@ func (q *QQwry) Find(ip string) (res resultQQwry) {
 	var area []byte
 
 	mode := q.readMode(offset + 4)
-	if mode == REDIRECT_MODE_1 {
+	if mode == RedirectMode1 {
 		countryOffset := q.readUInt24()
 		mode = q.readMode(countryOffset)
-		if mode == REDIRECT_MODE_2 {
+		if mode == RedirectMode2 {
 			c := q.readUInt24()
 			country = q.readString(c)
 			countryOffset += 4
@@ -111,7 +113,7 @@ func (q *QQwry) Find(ip string) (res resultQQwry) {
 			countryOffset += uint32(len(country) + 1)
 		}
 		area = q.readArea(countryOffset)
-	} else if mode == REDIRECT_MODE_2 {
+	} else if mode == RedirectMode2 {
 		countryOffset := q.readUInt24()
 		country = q.readString(countryOffset)
 		area = q.readArea(offset + 8)
@@ -127,26 +129,26 @@ func (q *QQwry) Find(ip string) (res resultQQwry) {
 	return
 }
 
+// readMode 获取偏移值类型
 func (q *QQwry) readMode(offset uint32) byte {
 	mode := q.ReadData(1, int64(offset))
 	return mode[0]
 }
 
+// readArea 读取区域
 func (q *QQwry) readArea(offset uint32) []byte {
 	mode := q.readMode(offset)
-	if mode == REDIRECT_MODE_1 || mode == REDIRECT_MODE_2 {
+	if mode == RedirectMode1 || mode == RedirectMode2 {
 		areaOffset := q.readUInt24()
 		if areaOffset == 0 {
 			return []byte("")
-		} else {
-			return q.readString(areaOffset)
 		}
-	} else {
-		return q.readString(offset)
+		return q.readString(areaOffset)
 	}
-	return []byte("")
+	return q.readString(offset)
 }
 
+// readString 获取字符串
 func (q *QQwry) readString(offset uint32) []byte {
 	q.SetOffset(int64(offset))
 	data := make([]byte, 0, 30)
@@ -161,29 +163,29 @@ func (q *QQwry) readString(offset uint32) []byte {
 	return data
 }
 
+// searchIndex 查找索引位置
 func (q *QQwry) searchIndex(ip uint32) uint32 {
 	header := q.ReadData(8, 0)
 
 	start := binary.LittleEndian.Uint32(header[:4])
 	end := binary.LittleEndian.Uint32(header[4:])
 
-	buf := make([]byte, INDEX_LEN)
+	buf := make([]byte, IndexLen)
 	mid := uint32(0)
 	_ip := uint32(0)
 
 	for {
 		mid = q.getMiddleOffset(start, end)
-		buf = q.ReadData(INDEX_LEN, int64(mid))
+		buf = q.ReadData(IndexLen, int64(mid))
 		_ip = binary.LittleEndian.Uint32(buf[:4])
 
-		if end-start == INDEX_LEN {
+		if end-start == IndexLen {
 			offset := byteToUInt32(buf[4:])
-			buf = q.ReadData(INDEX_LEN)
+			buf = q.ReadData(IndexLen)
 			if ip < binary.LittleEndian.Uint32(buf[:4]) {
 				return offset
-			} else {
-				return 0
 			}
+			return 0
 		}
 
 		// 找到的比较大，向前移
@@ -194,22 +196,22 @@ func (q *QQwry) searchIndex(ip uint32) uint32 {
 		} else if _ip == ip {
 			return byteToUInt32(buf[4:])
 		}
-
 	}
-	return 0
 }
 
+// readUInt24
 func (q *QQwry) readUInt24() uint32 {
 	buf := q.ReadData(3)
 	return byteToUInt32(buf)
 }
 
+// getMiddleOffset
 func (q *QQwry) getMiddleOffset(start uint32, end uint32) uint32 {
-	records := ((end - start) / INDEX_LEN) >> 1
-	return start + records*INDEX_LEN
+	records := ((end - start) / IndexLen) >> 1
+	return start + records*IndexLen
 }
 
-// 将 byte 转换为uint32
+// byteToUInt32 将 byte 转换为uint32
 func byteToUInt32(data []byte) uint32 {
 	i := uint32(data[0]) & 0xff
 	i |= (uint32(data[1]) << 8) & 0xff00
