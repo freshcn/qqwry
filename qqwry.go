@@ -3,12 +3,13 @@ package main
 import (
 	"encoding/binary"
 	"errors"
-	"github.com/axgle/mahonia"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
 	"strings"
+
+	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
 var IpData fileData
@@ -30,7 +31,6 @@ func (f *fileData) InitIpData() (rs interface{}) {
 		return
 	}
 	defer f.Path.Close()
-
 
 	tmpData, err := ioutil.ReadAll(f.Path)
 	if err != nil {
@@ -63,16 +63,16 @@ func (q *QQwry) ReadData(num int, offset ...int64) (rs []byte) {
 		q.SetOffset(offset[0])
 	}
 	nums := int64(num)
-	end := q.Offset+nums
+	end := q.Offset + nums
 	dataNum := int64(len(q.Data.Data))
-	if (q.Offset > dataNum) {
+	if q.Offset > dataNum {
 		return nil
 	}
 
-	if (end > dataNum) {
+	if end > dataNum {
 		end = dataNum
 	}
-	rs = q.Data.Data[q.Offset : end]
+	rs = q.Data.Data[q.Offset:end]
 	q.Offset = end
 	return
 }
@@ -120,10 +120,9 @@ func (q *QQwry) Find(ip string) (res resultQQwry) {
 		area = q.readArea(offset + uint32(5+len(country)))
 	}
 
-
-	enc := mahonia.NewDecoder("gbk")
-	res.Country = enc.ConvertString(string(country))
-	res.Area = enc.ConvertString(string(area))
+	enc := simplifiedchinese.GBK.NewDecoder()
+	res.Country, _ = enc.String(string(country))
+	res.Area, _ = enc.String(string(area))
 
 	return
 }
