@@ -18,7 +18,7 @@ install:
     - gox -osarch=windows/386
 
 script:
-    - ls -l|grep go-id-builder
+    - ls -l|grep qqwry
 
 deploy:
     provider: releases
