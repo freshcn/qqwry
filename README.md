@@ -1,6 +1,6 @@
 # qqwry 
 
-![travis ci](https://travis-ci.org/freshcn/qqwry.svg?branch=master)
+[![travis ci](https://travis-ci.org/freshcn/qqwry.svg?branch=master)](https://travis-ci.org/freshcn/qqwry)
 
 纯真 IP 库的一个服务。通过http提供一个ip地址归属地查询支持
 
