@@ -1,0 +1,36 @@
+language: go
+
+go:
+    - 1.6.x
+    - 1.7.x
+    - 1.8.x
+
+before_install:
+    - go get github.com/mitchellh/gox
+    - go get
+
+install:
+    - gox -osarch=darwin/386
+    - gox -osarch=darwin/amd64
+    - gox -osarch=linux/amd64
+    - gox -osarch=linux/386
+    - gox -osarch=windows/amd64
+    - gox -osarch=windows/386
+
+script:
+    - ls -l|grep go-id-builder
+
+deploy:
+    provider: releases
+    api_key: "$GH_TOKEN"
+    file:
+        - qqwry_darwin_386
+        - qqwry_darwin_amd64
+        - qqwry_linux_386
+        - qqwry_linux_amd64
+        - qqwry_windows_386.exe
+        - qqwry_windows_amd64.exe
+    skip_cleanup: true
+    on:
+        condition: $TRAVIS_GO_VERSION =~ ^1\.7\.[0-9]+$
+        tags: true
