@@ -19,12 +19,13 @@ type ResultQQwry struct {
 	//IP      string `json:"ip"`
 	Country string `json:"country"`
 	Area    string `json:"area"`
+	Err     bool   `json:"error"`
 }
 
 type fileData struct {
 	Data     []byte
 	FilePath string
-	Path     *os.File
+	File     *os.File
 	IPNum    int64
 }
 

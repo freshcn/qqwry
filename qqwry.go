@@ -26,14 +26,14 @@ func (f *fileData) InitIPData() (rs interface{}) {
 	}
 
 	// 打开文件句柄
-	f.Path, err = os.OpenFile(f.FilePath, os.O_RDONLY, 0400)
+	f.File, err = os.OpenFile(f.FilePath, os.O_RDONLY, 0400)
 	if err != nil {
 		rs = err
 		return
 	}
-	defer f.Path.Close()
+	defer f.File.Close()
 
-	tmpData, err := ioutil.ReadAll(f.Path)
+	tmpData, err := ioutil.ReadAll(f.File)
 	if err != nil {
 		log.Println(err)
 		rs = err
@@ -85,7 +85,6 @@ func (q *QQwry) SetOffset(offset int64) {
 
 // Find ip地址查询对应归属地信息
 func (q *QQwry) Find(ip string) (res ResultQQwry) {
-
 	res = ResultQQwry{}
 
 	//res.IP = ip
