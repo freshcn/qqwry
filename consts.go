@@ -16,7 +16,7 @@ const (
 
 // ResultQQwry 归属地信息
 type ResultQQwry struct {
-	IP      string `json:"ip"`
+	//IP      string `json:"ip"`
 	Country string `json:"country"`
 	Area    string `json:"area"`
 }

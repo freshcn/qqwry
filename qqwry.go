@@ -88,7 +88,7 @@ func (q *QQwry) Find(ip string) (res ResultQQwry) {
 
 	res = ResultQQwry{}
 
-	res.IP = ip
+	//res.IP = ip
 	if strings.Count(ip, ".") != 3 {
 		return res
 	}
