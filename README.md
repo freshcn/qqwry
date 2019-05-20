@@ -2,7 +2,7 @@
 
 [![travis ci](https://travis-ci.org/freshcn/qqwry.svg?branch=master)](https://travis-ci.org/freshcn/qqwry)
 
-纯真 IP 库的一个服务，通过 HTTP 提供一个 IP 地址归属地查询支持的微服务。
+通过 HTTP 提供一个 IP 地址归属地查询支持的微服务，使用纯真的 IP 库（支持直接在线获取和更新）。
 
 ## 介绍
 
