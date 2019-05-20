@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/binary"
-	"errors"
 	"io/ioutil"
 	"log"
 	"net"
@@ -17,27 +16,37 @@ var IPData fileData
 
 // InitIPData 初始化ip库数据到内存中
 func (f *fileData) InitIPData() (rs interface{}) {
+	var tmpData []byte
 
 	// 判断文件是否存在
 	_, err := os.Stat(f.FilePath)
 	if err != nil && os.IsNotExist(err) {
-		rs = errors.New("文件不存在")
-		return
-	}
+		log.Println("文件不存在，尝试从网络获取最新纯真 IP 库")
+		tmpData, err = GetOnline()
+		if err != nil {
+			rs = err
+			return
+		} else {
+			if err := ioutil.WriteFile(f.FilePath, tmpData, 0644); err == nil {
+				log.Printf("已将最新的纯真 IP 库保存到本地 %s ", f.FilePath)
+			}
+		}
+	} else {
+		// 打开文件句柄
+		log.Printf("从本地数据库文件 %s 打开\n", f.FilePath)
+		f.Path, err = os.OpenFile(f.FilePath, os.O_RDONLY, 0400)
+		if err != nil {
+			rs = err
+			return
+		}
+		defer f.Path.Close()
 
-	// 打开文件句柄
-	f.Path, err = os.OpenFile(f.FilePath, os.O_RDONLY, 0400)
-	if err != nil {
-		rs = err
-		return
-	}
-	defer f.Path.Close()
-
-	tmpData, err := ioutil.ReadAll(f.Path)
-	if err != nil {
-		log.Println(err)
-		rs = err
-		return
+		tmpData, err = ioutil.ReadAll(f.Path)
+		if err != nil {
+			log.Println(err)
+			rs = err
+			return
+		}
 	}
 
 	f.Data = tmpData
