@@ -6,12 +6,26 @@ import (
     "encoding/binary"
     "io/ioutil"
     "net/http"
+    "time"
 )
 
 // @ref https://zhangzifan.com/update-qqwry-dat.html
 
+func httpGet(url string) (*http.Response, error) {
+    req, err := http.NewRequest("GET", url, nil)
+    if err != nil {
+        return nil, err
+    }
+    req.Header.Set("Accept", "text/html, */*")
+    req.Header.Set("User-Agent", "Mozilla/3.0 (compatible; Indy Library)")
+
+    client := &http.Client{Timeout: time.Second * 10}
+    resp, err := client.Do(req)
+    return resp, err
+}
+
 func getKey() (uint32, error) {
-    resp, err := http.Get("http://update.cz88.net/ip/copywrite.rar")
+    resp, err := httpGet("http://update.cz88.net/ip/copywrite.rar")
     if err != nil {
         return 0, err
     }
@@ -26,7 +40,7 @@ func getKey() (uint32, error) {
 }
 
 func GetOnline() ([]byte, error) {
-    resp, err := http.Get("http://update.cz88.net/ip/qqwry.rar")
+    resp, err := httpGet("http://update.cz88.net/ip/qqwry.rar")
     if err != nil {
         return nil, err
     }
